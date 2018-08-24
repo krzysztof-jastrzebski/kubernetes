@@ -1007,7 +1007,7 @@ type fakeSummaryProvider struct {
 	result *statsapi.Summary
 }
 
-func (f *fakeSummaryProvider) Get(updateStats bool) (*statsapi.Summary, error) {
+func (f *fakeSummaryProvider) Get(updateStats bool, onlyCPUAndMemory bool) (*statsapi.Summary, error) {
 	return f.result, nil
 }
 

@@ -238,7 +238,7 @@ func (m *managerImpl) synchronize(diskInfoProvider DiskInfoProvider, podFunc Act
 
 	activePods := podFunc()
 	updateStats := true
-	summary, err := m.summaryProvider.Get(updateStats)
+	summary, err := m.summaryProvider.Get(updateStats, false)
 	if err != nil {
 		glog.Errorf("eviction manager: failed to get get summary stats: %v", err)
 		return nil
@@ -416,7 +416,7 @@ func (m *managerImpl) reclaimNodeLevelResources(signalToReclaim evictionapi.Sign
 
 	}
 	if len(nodeReclaimFuncs) > 0 {
-		summary, err := m.summaryProvider.Get(true)
+		summary, err := m.summaryProvider.Get(true, false)
 		if err != nil {
 			glog.Errorf("eviction manager: failed to get get summary stats after resource reclaim: %v", err)
 			return false

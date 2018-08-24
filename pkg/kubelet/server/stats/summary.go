@@ -27,7 +27,7 @@ import (
 type SummaryProvider interface {
 	// Get provides a new Summary with the stats from Kubelet,
 	// and will update some stats if updateStats is true
-	Get(updateStats bool) (*statsapi.Summary, error)
+	Get(updateStats, onlyCPUAndMemory bool) (*statsapi.Summary, error)
 }
 
 // summaryProviderImpl implements the SummaryProvider interface.
@@ -43,7 +43,7 @@ func NewSummaryProvider(statsProvider StatsProvider) SummaryProvider {
 	return &summaryProviderImpl{statsProvider}
 }
 
-func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) {
+func (sp *summaryProviderImpl) Get(updateStats, onlyCPUAndMemory bool) (*statsapi.Summary, error) {
 	// TODO(timstclair): Consider returning a best-effort response if any of
 	// the following errors occur.
 	node, err := sp.provider.GetNode()
@@ -71,7 +71,6 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rlimit stats: %v", err)
 	}
-
 	nodeStats := statsapi.NodeStats{
 		NodeName:  node.Name,
 		CPU:       rootStats.CPU,
@@ -106,6 +105,30 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 		s.Logs, s.Rootfs = nil, nil
 		s.Name = sys
 		nodeStats.SystemContainers = append(nodeStats.SystemContainers, *s)
+	}
+
+	if onlyCPUAndMemory {
+		nodeStats.Network = nil
+		nodeStats.Fs = nil
+		nodeStats.Runtime = nil
+		nodeStats.Rlimit = nil
+		for i := 0; i < len(nodeStats.SystemContainers); i++ {
+			nodeStats.SystemContainers[i].Accelerators = nil
+			nodeStats.SystemContainers[i].Rootfs = nil
+			nodeStats.SystemContainers[i].Logs = nil
+			nodeStats.SystemContainers[i].UserDefinedMetrics = nil
+		}
+		for i := 0; i < len(podStats); i++ {
+			podStats[i].Network = nil
+			podStats[i].VolumeStats = nil
+			podStats[i].EphemeralStorage = nil
+			for j := 0; j < len(podStats); j++ {
+				podStats[i].Containers[j].Accelerators = nil
+				podStats[i].Containers[j].Rootfs = nil
+				podStats[i].Containers[j].Logs = nil
+				podStats[i].Containers[j].UserDefinedMetrics = nil
+			}
+		}
 	}
 
 	summary := statsapi.Summary{

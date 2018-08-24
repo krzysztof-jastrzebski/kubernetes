@@ -108,6 +108,7 @@ func CreateHandlers(rootPath string, provider StatsProvider, summaryProvider Sum
 	}{
 		{"", h.handleStats},
 		{"/summary", h.handleSummary},
+		{"/cpuandmemory", h.handleCPUAndMemory},
 		{"/container", h.handleSystemContainer},
 		{"/{podName}/{containerName}", h.handlePodContainer},
 		{"/{namespace}/{podName}/{uid}/{containerName}", h.handlePodContainer},
@@ -195,9 +196,23 @@ func (h *handler) handleStats(request *restful.Request, response *restful.Respon
 func (h *handler) handleSummary(request *restful.Request, response *restful.Response) {
 	// external calls to the summary API use cached stats
 	forceStatsUpdate := false
-	summary, err := h.summaryProvider.Get(forceStatsUpdate)
+	onlyCPUAndMemory := false
+	summary, err := h.summaryProvider.Get(forceStatsUpdate, onlyCPUAndMemory)
 	if err != nil {
 		handleError(response, "/stats/summary", err)
+	} else {
+		writeResponse(response, summary)
+	}
+}
+
+// Handles stats summary (only cpu and memory) requests to /stats/cpuandmemory
+func (h *handler) handleCPUAndMemory(request *restful.Request, response *restful.Response) {
+	// external calls to the summary API use cached stats
+	forceStatsUpdate := false
+	onlyCPUAndMemory := true
+	summary, err := h.summaryProvider.Get(forceStatsUpdate, onlyCPUAndMemory)
+	if err != nil {
+		handleError(response, "/stats/cpuandmemory", err)
 	} else {
 		writeResponse(response, summary)
 	}

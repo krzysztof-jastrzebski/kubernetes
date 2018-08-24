@@ -81,7 +81,7 @@ func TestSummaryProvider(t *testing.T) {
 		On("GetCgroupStats", "/kubepods", true).Return(cgroupStatsMap["/pods"].cs, cgroupStatsMap["/pods"].ns, nil)
 
 	provider := NewSummaryProvider(mockStatsProvider)
-	summary, err := provider.Get(true)
+	summary, err := provider.Get(true, false)
 	assert.NoError(err)
 
 	assert.Equal(summary.Node.NodeName, "test-node")
@@ -124,6 +124,44 @@ func TestSummaryProvider(t *testing.T) {
 		Memory:             cgroupStatsMap["/pods"].cs.Memory,
 		Accelerators:       cgroupStatsMap["/pods"].cs.Accelerators,
 		UserDefinedMetrics: cgroupStatsMap["/pods"].cs.UserDefinedMetrics,
+	})
+	assert.Equal(summary.Pods, podStats)
+
+	summary, err = provider.Get(true, true)
+	assert.NoError(err)
+
+	assert.Equal(summary.Node.NodeName, "test-node")
+	assert.Equal(summary.Node.StartTime, cgroupStatsMap["/"].cs.StartTime)
+	assert.Equal(summary.Node.CPU, cgroupStatsMap["/"].cs.CPU)
+	assert.Equal(summary.Node.Memory, cgroupStatsMap["/"].cs.Memory)
+	assert.Nil(summary.Node.Network)
+	assert.Nil(summary.Node.Fs)
+	assert.Nil(summary.Node.Runtime)
+
+	assert.Equal(len(summary.Node.SystemContainers), 4)
+	assert.Contains(summary.Node.SystemContainers, statsapi.ContainerStats{
+		Name:      "kubelet",
+		StartTime: cgroupStatsMap["/kubelet"].cs.StartTime,
+		CPU:       cgroupStatsMap["/kubelet"].cs.CPU,
+		Memory:    cgroupStatsMap["/kubelet"].cs.Memory,
+	})
+	assert.Contains(summary.Node.SystemContainers, statsapi.ContainerStats{
+		Name:      "misc",
+		StartTime: cgroupStatsMap["/misc"].cs.StartTime,
+		CPU:       cgroupStatsMap["/misc"].cs.CPU,
+		Memory:    cgroupStatsMap["/misc"].cs.Memory,
+	})
+	assert.Contains(summary.Node.SystemContainers, statsapi.ContainerStats{
+		Name:      "runtime",
+		StartTime: cgroupStatsMap["/runtime"].cs.StartTime,
+		CPU:       cgroupStatsMap["/runtime"].cs.CPU,
+		Memory:    cgroupStatsMap["/runtime"].cs.Memory,
+	})
+	assert.Contains(summary.Node.SystemContainers, statsapi.ContainerStats{
+		Name:      "pods",
+		StartTime: cgroupStatsMap["/pods"].cs.StartTime,
+		CPU:       cgroupStatsMap["/pods"].cs.CPU,
+		Memory:    cgroupStatsMap["/pods"].cs.Memory,
 	})
 	assert.Equal(summary.Pods, podStats)
 }
