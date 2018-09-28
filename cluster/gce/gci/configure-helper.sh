@@ -606,12 +606,6 @@ token-url = ${TOKEN_URL}
 token-body = ${TOKEN_BODY}
 EOF
   fi
-  if [[ -n "${CONTAINER_API_ENDPOINT:-}" ]]; then
-    use_cloud_config="true"
-    cat <<EOF >>/etc/gce.conf
-container-api-endpoint = ${CONTAINER_API_ENDPOINT}
-EOF
-  fi
   if [[ -n "${PROJECT_ID:-}" ]]; then
     use_cloud_config="true"
     cat <<EOF >>/etc/gce.conf
@@ -1951,6 +1945,7 @@ function start-kube-controller-manager {
      [[ "${HPA_USE_REST_CLIENTS:-}" == "false" ]]; then
     params+=" --horizontal-pod-autoscaler-use-rest-clients=false"
   fi
+  params+=" --horizontal-pod-autoscaler-sync-period=5s"
   if [[ -n "${PV_RECYCLER_OVERRIDE_TEMPLATE:-}" ]]; then
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
@@ -2286,7 +2281,7 @@ function setup-fluentd {
   fluentd_gcp_yaml_version="${FLUENTD_GCP_YAML_VERSION:-v3.1.0}"
   sed -i -e "s@{{ fluentd_gcp_yaml_version }}@${fluentd_gcp_yaml_version}@g" "${fluentd_gcp_yaml}"
   sed -i -e "s@{{ fluentd_gcp_yaml_version }}@${fluentd_gcp_yaml_version}@g" "${fluentd_gcp_scaler_yaml}"
-  fluentd_gcp_version="${FLUENTD_GCP_VERSION:-0.3-1.5.34-1-k8s-1}"
+  fluentd_gcp_version="${FLUENTD_GCP_VERSION:-0.5-1.5.36-1-k8s}"
   sed -i -e "s@{{ fluentd_gcp_version }}@${fluentd_gcp_version}@g" "${fluentd_gcp_yaml}"
   update-daemon-set-prometheus-to-sd-parameters ${fluentd_gcp_yaml}
   start-fluentd-resource-update ${fluentd_gcp_yaml}
@@ -2762,11 +2757,14 @@ function main() {
   fi
 
   override-kubectl
+
+  start-kubelet
+
+
   # Run the containerized mounter once to pre-cache the container image.
   if [[ "${CONTAINER_RUNTIME:-docker}" == "docker" ]]; then
     assemble-docker-flags
   fi
-  start-kubelet
 
   if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
     compute-master-manifest-variables
