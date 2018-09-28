@@ -606,12 +606,6 @@ token-url = ${TOKEN_URL}
 token-body = ${TOKEN_BODY}
 EOF
   fi
-  if [[ -n "${CONTAINER_API_ENDPOINT:-}" ]]; then
-    use_cloud_config="true"
-    cat <<EOF >>/etc/gce.conf
-container-api-endpoint = ${CONTAINER_API_ENDPOINT}
-EOF
-  fi
   if [[ -n "${PROJECT_ID:-}" ]]; then
     use_cloud_config="true"
     cat <<EOF >>/etc/gce.conf
@@ -1121,7 +1115,7 @@ function assemble-docker-flags {
   if [[ "${TEST_CLUSTER:-}" == "true" ]]; then
     docker_opts+=" --log-level=debug"
   else
-    docker_opts+=" --log-level=warn"
+    docker_opts+=" --log-level=debug"
   fi
   local use_net_plugin="true"
   if [[ "${NETWORK_PROVIDER:-}" == "kubenet" || "${NETWORK_PROVIDER:-}" == "cni" ]]; then
@@ -1192,7 +1186,7 @@ function start-kubelet {
   echo "Using kubelet binary at ${kubelet_bin}"
 
   local -r kubelet_env_file="/etc/default/kubelet"
-  local kubelet_opts="${KUBELET_ARGS} ${KUBELET_CONFIG_FILE_ARG:-}"
+  local kubelet_opts="${KUBELET_ARGS} ${KUBELET_CONFIG_FILE_ARG:-} --v=4"
   echo "KUBELET_OPTS=\"${kubelet_opts}\"" > "${kubelet_env_file}"
   echo "KUBE_COVERAGE_FILE=\"/var/log/kubelet.cov\"" >> "${kubelet_env_file}"
 
@@ -1951,6 +1945,7 @@ function start-kube-controller-manager {
      [[ "${HPA_USE_REST_CLIENTS:-}" == "false" ]]; then
     params+=" --horizontal-pod-autoscaler-use-rest-clients=false"
   fi
+  params+=" --horizontal-pod-autoscaler-sync-period=5s"
   if [[ -n "${PV_RECYCLER_OVERRIDE_TEMPLATE:-}" ]]; then
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
@@ -2286,7 +2281,7 @@ function setup-fluentd {
   fluentd_gcp_yaml_version="${FLUENTD_GCP_YAML_VERSION:-v3.1.0}"
   sed -i -e "s@{{ fluentd_gcp_yaml_version }}@${fluentd_gcp_yaml_version}@g" "${fluentd_gcp_yaml}"
   sed -i -e "s@{{ fluentd_gcp_yaml_version }}@${fluentd_gcp_yaml_version}@g" "${fluentd_gcp_scaler_yaml}"
-  fluentd_gcp_version="${FLUENTD_GCP_VERSION:-0.3-1.5.34-1-k8s-1}"
+  fluentd_gcp_version="${FLUENTD_GCP_VERSION:-0.5-1.5.36-1-k8s}"
   sed -i -e "s@{{ fluentd_gcp_version }}@${fluentd_gcp_version}@g" "${fluentd_gcp_yaml}"
   update-daemon-set-prometheus-to-sd-parameters ${fluentd_gcp_yaml}
   start-fluentd-resource-update ${fluentd_gcp_yaml}
@@ -2700,6 +2695,54 @@ EOF
 
 ########### Main Function ###########
 function main() {
+
+  cat <<EOF >/etc/systemd/journald.conf
+#  This file is part of systemd.
+#
+#  systemd is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU Lesser General Public License as published by
+#  the Free Software Foundation; either version 2.1 of the License, or
+#  (at your option) any later version.
+#
+# Entries in this file show the compile time defaults.
+# You can change settings by editing this file.
+# Defaults can be restored by simply deleting this file.
+#
+# See journald.conf(5) for details.
+
+[Journal]
+Storage=persistent
+#Compress=yes
+#Seal=yes
+#SplitMode=uid
+#SyncIntervalSec=5m
+#RateLimitIntervalSec=30s
+#RateLimitBurst=1000
+SystemMaxUse=1G
+#SystemKeepFree=
+SystemMaxFileSize=100M
+#SystemMaxFiles=100
+#RuntimeMaxUse=
+#RuntimeKeepFree=
+#RuntimeMaxFileSize=
+#RuntimeMaxFiles=100
+#MaxRetentionSec=
+#MaxFileSec=1month
+#ForwardToSyslog=no
+#ForwardToKMsg=no
+#ForwardToConsole=no
+#ForwardToWall=yes
+#TTYPath=/dev/console
+#MaxLevelStore=debug
+#MaxLevelSyslog=debug
+#MaxLevelKMsg=notice
+#MaxLevelConsole=info
+#MaxLevelWall=emerg
+RateLimitInterval=0
+RateLimitBurst=0
+EOF
+
+  systemctl restart systemd-journald
   echo "Start to configure instance for kubernetes"
 
   KUBE_HOME="/home/kubernetes"
@@ -2762,10 +2805,12 @@ function main() {
   fi
 
   override-kubectl
+
   # Run the containerized mounter once to pre-cache the container image.
   if [[ "${CONTAINER_RUNTIME:-docker}" == "docker" ]]; then
     assemble-docker-flags
   fi
+
   start-kubelet
 
   if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then

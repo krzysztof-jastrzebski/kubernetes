@@ -100,7 +100,9 @@ func newKubeDockerClient(dockerClient *dockerapi.Client, requestTimeout, imagePu
 func (d *kubeDockerClient) ListContainers(options dockertypes.ContainerListOptions) ([]dockertypes.Container, error) {
 	ctx, cancel := d.getTimeoutContext()
 	defer cancel()
+	glog.Infof("d.client.ContainerList(ctx, options) before")
 	containers, err := d.client.ContainerList(ctx, options)
+	glog.Infof("d.client.ContainerList(ctx, options) after")
 	if ctxErr := contextError(ctx); ctxErr != nil {
 		return nil, ctxErr
 	}
@@ -318,16 +320,17 @@ type progressReporter struct {
 // newProgressReporter creates a new progressReporter for specific image with specified reporting interval
 func newProgressReporter(image string, cancel context.CancelFunc, imagePullProgressDeadline time.Duration) *progressReporter {
 	return &progressReporter{
-		progress: newProgress(),
-		image:    image,
-		cancel:   cancel,
-		stopCh:   make(chan struct{}),
+		progress:                  newProgress(),
+		image:                     image,
+		cancel:                    cancel,
+		stopCh:                    make(chan struct{}),
 		imagePullProgressDeadline: imagePullProgressDeadline,
 	}
 }
 
 // start starts the progressReporter
 func (p *progressReporter) start() {
+	glog.V(2).Infof("Start pulling image %q", p.image)
 	go func() {
 		ticker := time.NewTicker(defaultImagePullingProgressReportInterval)
 		defer ticker.Stop()

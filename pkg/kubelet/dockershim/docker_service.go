@@ -171,6 +171,7 @@ type ClientConfig struct {
 // NewDockerClientFromConfig create a docker client from given configure
 // return nil if nil configure is given.
 func NewDockerClientFromConfig(config *ClientConfig) libdocker.Interface {
+	glog.Infof("NewDockerClientFromConfig %v", config)
 	if config != nil {
 		// Create docker client.
 		client := libdocker.ConnectToDockerOrDie(

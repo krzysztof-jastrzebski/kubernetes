@@ -446,6 +446,7 @@ func (ds *dockerService) PodSandboxStatus(ctx context.Context, req *runtimeapi.P
 
 // ListPodSandbox returns a list of Sandbox.
 func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPodSandboxRequest) (*runtimeapi.ListPodSandboxResponse, error) {
+	glog.Infof("ListPodSandbox start")
 	filter := r.GetFilter()
 
 	// By default, list all containers whether they are running or not.
@@ -456,7 +457,6 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 	f := newDockerFilter(&opts.Filters)
 	// Add filter to select only sandbox containers.
 	f.AddLabel(containerTypeLabelKey, containerTypeLabelSandbox)
-
 	if filter != nil {
 		if filter.Id != "" {
 			f.Add("id", filter.Id)
@@ -492,12 +492,12 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 			glog.Errorf("Failed to list checkpoints: %v", err)
 		}
 	}
-
+	glog.Infof("ListPodSandbox - List Containers start")
 	containers, err := ds.client.ListContainers(opts)
+	glog.Infof("ListPodSandbox - List Containers end")
 	if err != nil {
 		return nil, err
 	}
-
 	// Convert docker containers to runtime api sandboxes.
 	result := []*runtimeapi.PodSandbox{}
 	// using map as set
@@ -515,7 +515,6 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 		sandboxIDs[converted.Id] = true
 		result = append(result, converted)
 	}
-
 	// Include sandbox that could only be found with its checkpoint if no filter is applied
 	// These PodSandbox will only include PodSandboxID, Name, Namespace.
 	// These PodSandbox will be in PodSandboxState_SANDBOX_NOTREADY state.
@@ -537,7 +536,7 @@ func (ds *dockerService) ListPodSandbox(_ context.Context, r *runtimeapi.ListPod
 		}
 		result = append(result, checkpointToRuntimeAPISandbox(id, checkpoint))
 	}
-
+	glog.Infof("ListPodSandbox end")
 	return &runtimeapi.ListPodSandboxResponse{Items: result}, nil
 }
 

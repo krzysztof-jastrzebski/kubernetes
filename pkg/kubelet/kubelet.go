@@ -1869,6 +1869,8 @@ func (kl *Kubelet) syncLoop(updates <-chan kubetypes.PodUpdate, handler SyncHand
 //                     containers have failed liveness checks
 func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handler SyncHandler,
 	syncCh <-chan time.Time, housekeepingCh <-chan time.Time, plegCh <-chan *pleg.PodLifecycleEvent) bool {
+	glog.Infof("syncLoopIteration start")
+	defer glog.Infof("syncLoopIteration end")
 	select {
 	case u, open := <-configCh:
 		// Update from a config source; dispatch it to the right handler

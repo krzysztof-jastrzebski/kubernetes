@@ -287,8 +287,11 @@ func (m *kubeGenericRuntimeManager) Status() (*kubecontainer.RuntimeStatus, erro
 // specifies whether the runtime returns all containers including those already
 // exited and dead containers (used for garbage collection).
 func (m *kubeGenericRuntimeManager) GetPods(all bool) ([]*kubecontainer.Pod, error) {
+	glog.Infof("GetPods start")
 	pods := make(map[kubetypes.UID]*kubecontainer.Pod)
+	glog.Infof("GetPods - get sandboxes start")
 	sandboxes, err := m.getKubeletSandboxes(all)
+	glog.Infof("GetPods - get sandboxes end")
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +317,6 @@ func (m *kubeGenericRuntimeManager) GetPods(all bool) ([]*kubecontainer.Pod, err
 		}
 		p.Sandboxes = append(p.Sandboxes, converted)
 	}
-
 	containers, err := m.getKubeletContainers(all)
 	if err != nil {
 		return nil, err
@@ -351,7 +353,7 @@ func (m *kubeGenericRuntimeManager) GetPods(all bool) ([]*kubecontainer.Pod, err
 	for _, pod := range pods {
 		result = append(result, pod)
 	}
-
+	glog.Infof("GetPods end")
 	return result, nil
 }
 

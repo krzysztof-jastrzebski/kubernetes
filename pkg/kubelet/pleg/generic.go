@@ -180,7 +180,7 @@ func (g *GenericPLEG) updateRelistTime(timestamp time.Time) {
 // relist queries the container runtime for list of pods/containers, compare
 // with the internal pods/containers, and generates events accordingly.
 func (g *GenericPLEG) relist() {
-	glog.V(5).Infof("GenericPLEG: Relisting")
+	glog.Infof("GenericPLEG: Relisting")
 
 	if lastRelistTime := g.getRelistTime(); !lastRelistTime.IsZero() {
 		metrics.PLEGRelistInterval.Observe(metrics.SinceInMicroseconds(lastRelistTime))
@@ -192,7 +192,9 @@ func (g *GenericPLEG) relist() {
 	}()
 
 	// Get all the pods.
+	glog.Infof("GenericPLEG: Relisting - Get Pods")
 	podList, err := g.runtime.GetPods(true)
+	glog.Infof("GenericPLEG: Relisting - Get Pods")
 	if err != nil {
 		glog.Errorf("GenericPLEG: Unable to retrieve pods: %v", err)
 		return
@@ -281,6 +283,7 @@ func (g *GenericPLEG) relist() {
 
 	// make sure we retain the list of pods that need reinspecting the next time relist is called
 	g.podsToReinspect = needsReinspection
+	glog.Infof("GenericPLEG: Relisting end")
 }
 
 func getContainersFromPods(pods ...*kubecontainer.Pod) []*kubecontainer.Container {

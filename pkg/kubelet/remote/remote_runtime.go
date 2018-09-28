@@ -256,17 +256,19 @@ func (r *RemoteRuntimeService) RemoveContainer(containerID string) error {
 
 // ListContainers lists containers by filters.
 func (r *RemoteRuntimeService) ListContainers(filter *runtimeapi.ContainerFilter) ([]*runtimeapi.Container, error) {
+	glog.Infof("ListContainers start")
 	ctx, cancel := getContextWithTimeout(r.timeout)
 	defer cancel()
-
+	glog.Infof("ListContainers  - list containers start")
 	resp, err := r.runtimeClient.ListContainers(ctx, &runtimeapi.ListContainersRequest{
 		Filter: filter,
 	})
+	glog.Infof("ListContainers  - list containers end")
 	if err != nil {
 		glog.Errorf("ListContainers with filter %+v from runtime service failed: %v", filter, err)
 		return nil, err
 	}
-
+	glog.Infof("ListContainers end")
 	return resp.Containers, nil
 }
 
